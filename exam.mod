@@ -44,7 +44,6 @@
  	forall(n in N, h in (1..(hours-maxConsec))) {
  		(sum ( consec in (0..(maxConsec))) works[n][h+consec])<=maxConsec;
  	} 
-   	  	   	
  }
  
  execute { // Should not be changed. Assumes that variables works[n][h] are used.
