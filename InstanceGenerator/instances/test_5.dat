@@ -1,0 +1,7 @@
+nNurses=2524;
+hours=17;
+demand=[2110 33 1357 198 358 1329 1342 1096 210 248 844 2487 1592 735 1441 337 1402];
+minHours=3;
+maxHours=8;
+maxConsec=4;
+maxPresence=10;

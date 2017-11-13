@@ -1,0 +1,13 @@
+# file name: instances/instance_XX.dat
+instancesDirectory = instances;
+fileNamePrefix = test;
+fileNameExtension = dat;
+numInstances = 1;
+
+nNurses = 10000;
+hours =  24;
+minHours = 3;
+maxHours = 6;
+maxConsec = 4;
+maxPresence = 10;
+
