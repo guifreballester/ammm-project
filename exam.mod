@@ -25,8 +25,8 @@
  dvar int+ max_h[n in N];
  dvar int+ min_h[n in N];
 
- dvar boolean worksBefore[n in N][h in H];
- dvar boolean worksAfter[n in N][h in H];
+ dvar boolean worksBefore[n in N][h in 2..hours];
+ dvar boolean worksAfter[n in N][h in 1..hours-1];
  dvar boolean rests[n in N][h in H];
  
   minimize sum(n in N) working[n]; // do not change this for A)

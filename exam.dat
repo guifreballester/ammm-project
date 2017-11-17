@@ -5,13 +5,23 @@
  *********************************************/
 
 // A
- numNurses = 20;
+ //numNurses = 200;
+ //hours =  24;
+ //demand = [ 20 20 10 10 10 20 20 30 40 60 60 70 50 80 80 70 60 60 40 30 40 30 30 30 ];
+ //minHours = 6;
+ //maxHours = 11;
+ //maxConsec = 4;
+ 
+ // B
+ //maxPresence = 15;
+  
+  // A
+ numNurses = 2000;
  hours =  24;
- demand = [ 2 2 1 1 1 2 2 3 4 6 6 7 5 8 8 7 6 6 4 3 4 3 3 3 ];
+ demand = [ 8 8 4 4 4 8 8 12 16 24 24 28 20 32 32 28 24 24 16 12 16 12 12 12 ];
  minHours = 5;
  maxHours = 9;
  maxConsec = 3;
  
  // B
- maxPresence = 20;
-  
+ maxPresence = 14;
