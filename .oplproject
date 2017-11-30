@@ -2,6 +2,10 @@
 	<version>1.0</version>
 	<configs>
 		<config category="opl" default="true" name="Configuration1">
+			<ref name="exam.dat" type="data">
+			</ref>
+			<ref name="exam.mod" type="model">
+			</ref>
 		</config>
 		<config category="opl" default="false" name="Configuration2">
 			<ref name="exam.mod" type="model">
