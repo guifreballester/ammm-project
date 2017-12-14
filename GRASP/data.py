@@ -10,12 +10,12 @@
 # }
 
 data = {
-    'numNurses': 20,
-    'hours': 24,
-    'demand': [2, 2, 1, 1, 1, 2, 2, 3, 4, 6, 6, 7, 5, 8, 8, 7, 6, 6, 4, 3, 4,
-               3, 3, 3],
+    'numNurses': 10,
+    'hours': 10,
+    'demand': [2, 2, 1, 1, 1, 2, 2, 3, 4, 6],
     'minHours': 5,
     'maxHours': 9,
     'maxConsec': 3,
-    'maxPresence': 14,
+    'maxPresence': 10,
 }
+
