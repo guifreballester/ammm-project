@@ -4,8 +4,8 @@ from data import data
 
 DEBUG = False
 
-ALFA = 0.4
-MAX_TR = 10
+ALFA = 0.3
+MAX_TR = 1
 INFEASIBLE = 10000
 
 NURSES = data.get('numNurses')
@@ -41,6 +41,8 @@ def is_solution_better(previous, new):
 
 def construct(ALFA):
     sol = np.zeros((NURSES, HOURS), dtype=np.int)
+    print "S"
+    print sol
     c = initialize_c()
     while not demand_fulfilled(sol):
         res = calculate_cost(sol, c)
@@ -70,6 +72,8 @@ def construct(ALFA):
         selected_nurse, cost, selected_hour = selected_candidate.values()
         # Update solution
         sol[selected_nurse][selected_hour] = 1
+        print "Updated nurse %s, hour %s" % (selected_nurse, selected_hour)
+        print sol
         candidate_index = np.where(c == selected_candidate)
         c = np.delete(c, candidate_index)
 
@@ -94,13 +98,13 @@ def demand_fulfilled(solution):
     for h in xrange(HOURS):
         is_fulfilled.append(sum([solution[n][h]
                             for n in xrange(NURSES)]) >= data.get('demand')[h])
-    print is_fulfilled
     for n in xrange(NURSES):
         total_h = sum([solution[n][h] for h in xrange(HOURS)])
         is_fulfilled.append(total_h >= data.get('minHours') or total_h == 0)
-        is_fulfilled.append(demand_break(solution[n]))
-    print solution
-    print is_fulfilled[HOURS:]
+        break_demand = demand_break(solution[n])
+        if not break_demand:
+            print "Break demand not fulfilled for nurse %s" % n
+        is_fulfilled.append(break_demand)
 
     return all(is_fulfilled)
 
@@ -115,17 +119,13 @@ def demand_break(nurse):
     first_element = ones_index[0][0]
     last_element = ones_index[0][-1]
 
+    total_breaks = 0
     for h in xrange(first_element, last_element):
-
         if nurse[h]:
+            total_breaks = 0
             continue
-
-        try:
-            previous_hour = nurse[h - 1]
-            next_hour = nurse[h + 1]
-        except IndexError:
-            continue
-        if not (nurse[h] and (not nurse[previous_hour] or not nurse[next_hour])):
+        total_breaks += 1
+        if total_breaks > 1:
             return False
     return True
 
@@ -144,6 +144,7 @@ def calculate_cost(sol, c):
         cost_break = calculate_break_cost(sol[current_nurse], current_hour)
 
         if DEBUG:
+            print element
             print "Costs hour %s, cost consec %s, cost presence %s, cost break %s" % (
                 cost_hours, cost_consec, cost_presence, cost_break)
 
@@ -155,6 +156,7 @@ def calculate_cost(sol, c):
         for element in c:
             if element['nurse'] != prev_nurse:
                 print '\n'
+                prev_nurse = element['nurse']
             print element
 
     return c  # cost per la hora h
@@ -164,11 +166,11 @@ def calculate_hours_cost(nurse):
     """ Assigns a cost for each nurse depending of working HOURS """
     hours_working = sum([h for h in nurse])
     if hours_working == 0:
-        return 600
+        return 1000
     elif hours_working < data.get('minHours'):
         return 0
     elif hours_working < data.get('maxHours'):
-        return 300
+        return 100
     else:
         return INFEASIBLE
 
@@ -191,44 +193,40 @@ def calculate_consec_cost(nurse, hour):
 def calculate_pres_cost(nurse, hour):
     current_hour = nurse[hour]
     ones_index = np.where(nurse == 1)
-    if not ones_index[0].size:
-        return 300
+    if ones_index[0].size == 0:
+        return 1000
     first_element = ones_index[0][0]
     last_element = ones_index[0][-1]
 
+    if last_element - first_element == MAX_PRESENCE:
+        return INFEASIBLE
     if first_element < current_hour < last_element:
-        return 100
-    elif ((hour + MAX_PRESENCE > last_element) or
-            (hour - MAX_PRESENCE < first_element)):
-        return 100
+        return 0
+    elif first_element + MAX_PRESENCE > hour and hour > last_element:
+        return 400
+    elif last_element - MAX_PRESENCE < hour and hour < first_element:
+        return 400
     return INFEASIBLE
 
 
 def calculate_break_cost(nurse, hour):
     ones_index = np.where(nurse == 1)
-
-    if not ones_index[0].size:
-        return 300
+    if ones_index[0].size == 0:
+        return 1000
 
     first_element = ones_index[0][0]
     last_element = ones_index[0][-1]
-
-    try:
+    if hour > 0 and hour < HOURS - 1:
         previous_hour = nurse[hour - 1]
-    except IndexError:
-        previous_hour = nurse[hour]
-
-    try:
-        next_hour = nurse[hour + 1]
-    except IndexError:
-        next_hour = nurse[hour]
-
-    if hour < first_element or hour > last_element:
-        return 100
-
-    elif previous_hour == 0 or next_hour == 0:
-        return 0
-    return 100
+        next_hour = nurse[hour - 1]
+    else:
+        return 2000
+    if first_element < hour < last_element:
+        if previous_hour == 0 and next_hour == 0:
+            return 0
+    if previous_hour == 1 or next_hour == 1:
+        return 50
+    return 800
 
 
 def calculate_demand_cost(sol, hour):
@@ -237,7 +235,7 @@ def calculate_demand_cost(sol, hour):
         hour_demand += nurse[hour]
 
     if hour_demand >= data.get('demand')[hour]:
-        return 500
+        return 800
     return 0
 
 
