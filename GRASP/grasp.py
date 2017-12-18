@@ -4,9 +4,9 @@ from data import data
 
 DEBUG = False
 
-ALFA = 0.1
-MAX_TR = 1
-INFEASIBLE = 10000
+ALFA = 0.5
+MAX_TR = 100
+INFEASIBLE = 5000
 
 NURSES = data.get('numNurses')
 HOURS = data.get('hours')
@@ -16,18 +16,27 @@ MAX_CONSEC = data.get('maxConsec')
 
 def grasp():
     x = np.ones((NURSES, HOURS), dtype=np.int)
-
+    total_solutions = []
+    best_iter = 0
     for i in xrange(MAX_TR):
         solution = construct(ALFA)
         if solution is None:
             continue
         sol = local(solution)
+        total_solutions.append(i)
         if is_solution_better(x, sol):
+            best_iter = i
             print "Found a better solution"
             print sol
             x = sol
     print "Final Solution"
     print x
+    print '\nTotal amount of solutions: ', len(total_solutions)
+    print '*' * 30
+    print "Best solution: ", best_iter
+    total_empty = NURSES - sum([any(element) for element in x])
+    print "Total nurses empty: ", total_empty
+    print '*' * 30
 
 
 def is_solution_better(previous, new):
@@ -57,8 +66,9 @@ def construct(ALFA):
         selected_nurse, cost, selected_hour = selected_candidate.values()
         # Update solution
         sol[selected_nurse][selected_hour] = 1
-        print "Updated nurse %s, hour %s, cost %s" % (selected_nurse, selected_hour, cost)
-        print sol
+        if DEBUG:
+            print "Updated nurse %s, hour %s, cost %s" % (selected_nurse, selected_hour, cost)
+            print sol
         candidate_index = np.where(c == selected_candidate)
         c = np.delete(c, candidate_index)
 
@@ -124,16 +134,12 @@ def calculate_cost(sol, c):
         cost_presence = calculate_pres_cost(sol[current_nurse], current_hour)
         cost_demand = calculate_demand_cost(sol, current_hour)
         cost_break = calculate_break_cost(sol[current_nurse], current_hour)
-
-        print element
-        print "Costs hour %s, cost consec %s, cost presence %s, cost break %s, cost_demand %s" % (
-                cost_hours, cost_consec, cost_presence,
-                cost_break, cost_demand)
-        print ' '
-
         total_cost = (cost_hours + cost_consec + cost_presence +
-                      cost_break + cost_demand)
+                  cost_break + cost_demand)
         element['cost'] = total_cost
+        if DEBUG:
+            print element
+            print ' '
 
     if DEBUG:
         prev_nurse = 0
@@ -164,7 +170,7 @@ def calculate_consec_cost(nurse, hour):
     checking_hour = 0
     if hour - MAX_CONSEC >= 0:
         checking_hour = hour - MAX_CONSEC
-    while checking_hour != hour + MAX_CONSEC:
+    while checking_hour <= hour + MAX_CONSEC:
         if checking_hour == HOURS:
             break
         if nurse[checking_hour] == 1 or checking_hour == hour:
@@ -174,7 +180,7 @@ def calculate_consec_cost(nurse, hour):
         if consec_hours > MAX_CONSEC:
             return INFEASIBLE
         checking_hour += 1
-    return 0
+    return -200
 
 
 def calculate_pres_cost(nurse, hour):
@@ -188,9 +194,9 @@ def calculate_pres_cost(nurse, hour):
     elif last_element - first_element == MAX_PRESENCE:
         return INFEASIBLE
     elif first_element + MAX_PRESENCE >= hour and hour > last_element:
-        return 200
+        return 300
     elif last_element - MAX_PRESENCE <= hour and hour < first_element:
-        return 200
+        return 300
     return INFEASIBLE
 
 
@@ -202,8 +208,8 @@ def calculate_break_cost(nurse, hour):
     first_element = ones_index[0][0]
     last_element = ones_index[0][-1]
 
-    previous_hour = 0
-    next_hour = 0
+    previous_hour = 1
+    next_hour = 1
     if hour > 0:
         previous_hour = nurse[hour - 1]
     if hour < HOURS - 1:
@@ -213,7 +219,7 @@ def calculate_break_cost(nurse, hour):
             return 0
     if previous_hour == 1 or next_hour == 1:
         return 50
-    return 800
+    return 1000
 
 
 def calculate_demand_cost(sol, hour):
