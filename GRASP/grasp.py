@@ -4,7 +4,7 @@ from data import data
 
 DEBUG = False
 
-ALFA = 0.5
+ALFA = 0.8
 MAX_TR = 100
 INFEASIBLE = 5000
 
@@ -89,16 +89,21 @@ def initialize_c():
 
 
 def demand_fulfilled(solution):
-    is_fulfilled = []
-    for h in xrange(HOURS):
-        demand = sum([solution[n][h] for n in xrange(NURSES)])
-        is_fulfilled.append(demand >= data.get('demand')[h])
+    is_fulfilled = calculate_demand(solution)
     for n in xrange(NURSES):
         total_h = sum([solution[n][h] for h in xrange(HOURS)])
         is_fulfilled.append(total_h >= data.get('minHours') or total_h == 0)
         break_demand = demand_break(solution[n])
         is_fulfilled.append(break_demand)
     return all(is_fulfilled)
+
+
+def calculate_demand(solution):
+    demand_fulfilled = []
+    for h in xrange(HOURS):
+        demand = sum([solution[n][h] for n in xrange(NURSES)])
+        demand_fulfilled.append(demand >= data.get('demand')[h])
+    return demand_fulfilled
 
 
 def demand_break(nurse):
@@ -122,7 +127,49 @@ def demand_break(nurse):
 
 
 def local(solution):
+    tmp_sol = solution
+    for n in xrange(NURSES):
+        if not any(solution[n]):
+            continue
+        tmp_sol = create_new_solution(solution, n)
+        tmp = tmp_sol
+        demand = calculate_demand(tmp_sol)
+        if all(demand):
+            solution = tmp_sol
+            continue
+        aviable_rows = [nu for nu in xrange(NURSES) if any(tmp_sol[nu])]
+        random.shuffle(aviable_rows)
+
+        for row in aviable_rows:
+            for h in xrange(HOURS):
+                if demand[h] or tmp_sol[row][h]:
+                    continue
+                hours_working = sum([h for h in tmp_sol[row]])
+                # Check maxHours
+                if hours_working == data.get('maxHours'):
+                    continue
+                # Check maxPresence (300 or 0 means hour is aviable)
+                if calculate_pres_cost(tmp_sol[row], h) not in (300, 0):
+                    continue
+                # Check consec (-200 means hour is aviable)
+                if calculate_consec_cost(tmp_sol[row], h) != -200:
+                    continue
+                tmp_sol[row][h] = 1
+            if all(calculate_demand(tmp_sol)):
+                solution = tmp_sol
+                break
+            else:
+                tmp_sol = tmp
+        else:
+            continue
     return solution
+
+
+def create_new_solution(sol, n):
+    tmp = sol.copy()
+    new_hours = [0 for i in xrange(len(sol[n]))]
+    tmp[n] = new_hours
+    return tmp
 
 
 def calculate_cost(sol, c):
@@ -136,18 +183,14 @@ def calculate_cost(sol, c):
         cost_break = calculate_break_cost(sol[current_nurse], current_hour)
         total_cost = (cost_hours + cost_consec + cost_presence +
                   cost_break + cost_demand)
+        # print element
+        # print "Total cost", total_cost
+        # print cost_hours, cost_consec, cost_presence, cost_break, cost_demand
+        # print ' '
         element['cost'] = total_cost
         if DEBUG:
             print element
             print ' '
-
-    if DEBUG:
-        prev_nurse = 0
-        for element in c:
-            if element['nurse'] != prev_nurse:
-                print '\n'
-                prev_nurse = element['nurse']
-            print element
 
     return c  # cost per la hora h
 
