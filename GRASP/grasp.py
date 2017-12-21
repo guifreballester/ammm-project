@@ -1,17 +1,21 @@
 import numpy as np
 import random
-from data import data
+from data import data_3 as data
 
 DEBUG = False
 
-ALFA = 0.8
+ALFA = 0.2
 MAX_TR = 100
 INFEASIBLE = 5000
+NO_HOUR = INFEASIBLE - 1000
 
 NURSES = data.get('numNurses')
 HOURS = data.get('hours')
 MAX_PRESENCE = data.get('maxPresence')
 MAX_CONSEC = data.get('maxConsec')
+
+if DEBUG:
+    import pdb
 
 
 def grasp():
@@ -43,7 +47,7 @@ def is_solution_better(previous, new):
     """ Checks if the new solution is better than the previous """
     total_previous = sum([any(element) for element in previous])
     total_new = sum([any(element) for element in new])
-    return total_new < total_previous
+    return total_new <= total_previous
 
 
 def construct(ALFA):
@@ -69,6 +73,7 @@ def construct(ALFA):
         if DEBUG:
             print "Updated nurse %s, hour %s, cost %s" % (selected_nurse, selected_hour, cost)
             print sol
+            pdb.set_trace()
         candidate_index = np.where(c == selected_candidate)
         c = np.delete(c, candidate_index)
 
@@ -183,12 +188,10 @@ def calculate_cost(sol, c):
         cost_break = calculate_break_cost(sol[current_nurse], current_hour)
         total_cost = (cost_hours + cost_consec + cost_presence +
                   cost_break + cost_demand)
-        # print element
-        # print "Total cost", total_cost
-        # print cost_hours, cost_consec, cost_presence, cost_break, cost_demand
-        # print ' '
         element['cost'] = total_cost
         if DEBUG:
+            print "Total cost", total_cost
+            print cost_hours, cost_consec, cost_presence, cost_break, cost_demand
             print element
             print ' '
 
@@ -205,7 +208,7 @@ def calculate_hours_cost(nurse):
     elif hours_working < data.get('maxHours'):
         return 100
     else:
-        return INFEASIBLE
+        return NO_HOUR
 
 
 def calculate_consec_cost(nurse, hour):
@@ -221,9 +224,9 @@ def calculate_consec_cost(nurse, hour):
         elif nurse[checking_hour] == 0:
             consec_hours = 0
         if consec_hours > MAX_CONSEC:
-            return INFEASIBLE
+            return NO_HOUR
         checking_hour += 1
-    return -200
+    return -20
 
 
 def calculate_pres_cost(nurse, hour):
@@ -233,14 +236,23 @@ def calculate_pres_cost(nurse, hour):
     first_element = ones_index[0][0]
     last_element = ones_index[0][-1]
     if first_element < hour < last_element:
-        return 0
+        return -300
     elif last_element - first_element == MAX_PRESENCE:
-        return INFEASIBLE
+        return NO_HOUR
+    elif first_element + (MAX_PRESENCE / 2) >= hour and hour > last_element:
+        return 10
+    elif last_element - (MAX_PRESENCE / 2) <= hour and hour < first_element:
+        return 10
     elif first_element + MAX_PRESENCE >= hour and hour > last_element:
+        if nurse[hour - 2]:
+            return -100
         return 300
     elif last_element - MAX_PRESENCE <= hour and hour < first_element:
+        if nurse[hour + 2]:
+            return -100
         return 300
-    return INFEASIBLE
+
+    return NO_HOUR
 
 
 def calculate_break_cost(nurse, hour):
@@ -253,15 +265,26 @@ def calculate_break_cost(nurse, hour):
 
     previous_hour = 1
     next_hour = 1
+    next_next_hour = 0
+    previous_previous_hour = 0
     if hour > 0:
         previous_hour = nurse[hour - 1]
     if hour < HOURS - 1:
         next_hour = nurse[hour + 1]
     if first_element < hour < last_element:
         if previous_hour == 0 and next_hour == 0:
-            return 0
-    if previous_hour == 1 or next_hour == 1:
-        return 50
+            return -1000
+    elif previous_hour == 1 or next_hour == 1:
+        return 100
+
+    if hour < HOURS - 2:
+        next_next_hour = nurse[hour + 2]
+    elif hour > 1:
+        previous_previous_hour = nurse[hour - 2]
+
+    if next_next_hour or previous_previous_hour:
+        return 100
+
     return 1000
 
 
