@@ -3,13 +3,13 @@ import random
 import matplotlib.pyplot as plt
 import time
 
-from data import data_2 as data
+from data import data_3 as data
 
 # Setting to True will enable the debugger
 DEBUG = False
 
-ALFA = 0.8
-MAX_TR = 10
+ALFA = 0.1
+MAX_TR = 1000
 INFEASIBLE = 5000
 NO_HOUR = INFEASIBLE
 
@@ -17,6 +17,7 @@ NURSES = data.get('numNurses')
 HOURS = data.get('hours')
 MAX_PRESENCE = data.get('maxPresence')
 MAX_CONSEC = data.get('maxConsec')
+MAX_ITERS = 20
 
 if DEBUG:
     import pdb
@@ -35,6 +36,7 @@ def grasp():
     for i in xrange(MAX_TR):
         solution = construct(ALFA)
         if solution is None:
+            print "Not feasible"
             continue
         sol = local(solution)
         total_solutions.append(i)
@@ -45,11 +47,12 @@ def grasp():
             print "Found a better solution"
             print sol
             x = sol
+
     print "Final Solution"
     print x
     print '\nTotal amount of solutions: ', len(total_solutions)
     print '*' * 30
-    print "Best solution: ", best_iter
+    print "Best solution in iteration: ", best_iter
     total_empty = NURSES - sum([any(element) for element in x])
     print "Total nurses empty: ", total_empty
     print '*' * 30
@@ -95,7 +98,7 @@ def construct(ALFA):
             print "Updated nurse %s, hour %s, cost %s" % (
                 selected_nurse, selected_hour, cost)
             print sol
-            pdb.set_trace()
+            #pdb.set_trace()
 
         candidate_index = np.where(c == selected_candidate)
         c = np.delete(c, candidate_index)
@@ -163,7 +166,7 @@ def local(solution):
         if not any(solution[n]):
             continue
         tmp_sol = create_new_solution(solution, n)
-        tmp = tmp_sol
+        tmp = tmp_sol.copy()
         demand = calculate_demand(tmp_sol)
         if all(demand):
             solution = tmp_sol
@@ -180,10 +183,10 @@ def local(solution):
                 if hours_working == data.get('maxHours'):
                     continue
                 # Check maxPresence (300 or 0 means hour is aviable)
-                if calculate_pres_cost(tmp_sol[row], h) not in (300, 0):
+                if calculate_pres_cost(tmp_sol[row], h) not in (300, -50, -300):
                     continue
                 # Check consec (-200 means hour is aviable)
-                if calculate_consec_cost(tmp_sol[row], h) != -200:
+                if calculate_consec_cost(tmp_sol[row], h) != -20:
                     continue
                 tmp_sol[row][h] = 1
             if all(calculate_demand(tmp_sol)):
@@ -214,8 +217,8 @@ def calculate_cost(sol, c):
         cost_presence = calculate_pres_cost(sol[current_nurse], current_hour)
         cost_demand = calculate_demand_cost(sol, current_hour)
         cost_break = calculate_break_cost(sol[current_nurse], current_hour)
-        total_cost = (cost_hours + cost_consec + cost_presence +
-                cost_break + cost_demand)
+        total_cost = min((cost_hours + cost_consec + cost_presence +
+                cost_break + cost_demand), 5000)
         element['cost'] = total_cost
         if DEBUG:
             print "Total cost", total_cost
@@ -256,7 +259,6 @@ def calculate_consec_cost(nurse, hour):
             consec_hours += 1
         elif nurse[checking_hour] == 0:
             consec_hours = 0
-
         if consec_hours > MAX_CONSEC:
             return NO_HOUR
         checking_hour += 1
@@ -272,20 +274,16 @@ def calculate_pres_cost(nurse, hour):
     first_element = ones_index[0][0]
     last_element = ones_index[0][-1]
     if first_element < hour < last_element:
-        return -200
+        return -300
     elif last_element - first_element == MAX_PRESENCE:
         return NO_HOUR
     elif first_element + (MAX_PRESENCE / 2) >= hour and hour > last_element:
-        return -100
+        return -50
     elif last_element - (MAX_PRESENCE / 2) <= hour and hour < first_element:
-        return -100
-    elif first_element + MAX_PRESENCE >= hour and hour > last_element:
-        if nurse[hour - 2]:
-            return 0
+        return -50
+    elif first_element + MAX_PRESENCE > hour and hour > last_element:
         return 300
-    elif last_element - MAX_PRESENCE <= hour and hour < first_element:
-        if nurse[hour + 2]:
-            return 0
+    elif last_element - MAX_PRESENCE < hour and hour < first_element:
         return 300
 
     return NO_HOUR
@@ -304,31 +302,22 @@ def calculate_break_cost(nurse, hour):
     first_element = ones_index[0][0]
     last_element = ones_index[0][-1]
 
-    previous_hour = 1
-    next_hour = 1
-    next_next_hour = 0
-    previous_previous_hour = 0
-
+    previous_hour = 0
+    next_hour = 0
     if hour > 0:
         previous_hour = nurse[hour - 1]
-    elif hour < HOURS - 1:
+    if hour < HOURS - 1:
         next_hour = nurse[hour + 1]
-
-    if hour < HOURS - 2:
-        next_next_hour = nurse[hour + 2]
-    elif hour > 1:
-        previous_previous_hour = nurse[hour - 2]
 
     if first_element < hour < last_element:
         if previous_hour == 0 and next_hour == 0:
+            return -2000
+        elif ((previous_hour == 0 and next_hour) or
+                (previous_hour and next_hour == 0)):
             return -1000
-        return 0
+        return 2500
     elif previous_hour == 1 or next_hour == 1:
-        return 100
-
-    if next_next_hour or previous_previous_hour:
-        return 100
-
+        return 2500
     return 1000
 
 
@@ -337,9 +326,9 @@ def calculate_demand_cost(sol, hour):
     hour_demand = 0
     for nurse in xrange(NURSES):
         hour_demand += sol[nurse][hour]
-    if hour_demand >= data.get('demand')[hour]:
-        return 1000
-    return 0
+    if hour_demand < data.get('demand')[hour]:
+        return 0
+    return 2000
 
 
 if __name__ == '__main__':
