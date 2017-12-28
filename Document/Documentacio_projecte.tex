@@ -1,0 +1,325 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1.2in]{geometry} %Pels marges
+
+\usepackage[utf8]{inputenc} %Per a poder posar accents, ç, ...
+
+\usepackage{graphicx} %Per a afegir imatges
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+%Per a bibliografia web
+
+%per als simbols de micro, nano,...
+\usepackage{amsmath}
+\usepackage{upgreek}
+
+\usepackage{url}
+%WEBGRAFIA
+%\usepackage[backend=biber]{biblatex}
+%\addbibresrouce{bibliography.bib}
+
+
+\usepackage{nameref}
+\usepackage{multirow} %Per a taules
+\usepackage{listings} %Per posar codi de programació
+\usepackage{color}
+%Configuració del codi de programació
+
+%Per als colors de les paraules claus del llenguatge de programació
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+%Per al color del fons del llenguatge de programació
+\definecolor{back}{gray}{1}
+\definecolor{white}{rgb}{1,1,1}
+\definecolor{purple}{rgb}{0.2627,0.0196,0.2235}
+
+\lstdefinestyle{opl}{%frame=<none|leftline|topline|bottomline|lines|single|shadowbox> [default:]none,
+  language=bash,
+  aboveskip=3.5mm,
+  belowskip=3.5mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  backgroundcolor=\color{back},
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3,
+  flexiblecolumns=true
+}
+
+\lstdefinestyle{C}{%frame=<none|leftline|topline|bottomline|lines|single|shadowbox> [default:]none,
+  language=C,
+  aboveskip=3.5mm,
+  belowskip=3.5mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  backgroundcolor=\color{back},
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3,
+  flexiblecolumns=true
+}
+
+
+\lstdefinestyle{python}{%frame=<none|leftline|topline|bottomline|lines|single|shadowbox> [default:]none,
+  language=python,
+  aboveskip=3.5mm,
+  belowskip=3.5mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  backgroundcolor=\color{back},
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3,
+  flexiblecolumns=true
+}
+
+\lstdefinestyle{DOS}
+{
+    backgroundcolor=\color{purple},
+    basicstyle=\scriptsize\color{white}\ttfamily
+}
+
+%Descripció del títol
+\title{Algorithmic Methods for Mathematical Models\\
+– COURSE PROJECT –}
+\date{\today}
+\author{Sergi Carol Bosch i Guifré Ballester Basols}
+
+%Per al títol de l'index
+\renewcommand*\contentsname{Índex}
+
+%Pels peus de foto
+\usepackage[english]{babel}
+
+%Perquè l'index es pugui clicar (que siguin links)
+\usepackage[hidelinks=true]{hyperref}
+\hypersetup{
+	colorlinks=false,
+	linktoc=all,
+	linkcolor=blue,
+}
+\hypersetup{%
+    pdfborder = {0 0 0}
+}
+
+%Per a forçar que les figures vagin junt amb el text
+\usepackage{float}
+
+%Per a la taula de figures
+\graphicspath{ {figures/} }
+%Per a posar títol a la taula de figures
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\newpage 
+\section{Problem Statement}
+A public hospital needs to design the working schedule of their nurses. As a first approximation, we are asked to help in designing the schedule of a single day. We know, for each hour \textit{h}, that at least \textit{$demand_h$} nurses should be working at the hospital. We have available a set of \textit{nNurses} nurses and we need to determine at which hours each nurse should be working. However, there are some limitations that should be taken into account:
+\begin{itemize}
+	\item Each nurse should work at least minHours hours. 
+	\item Each nurse should work at most maxHours hours.
+	\item Each nurse should work at most maxConsec consecutive hours.
+	\item No nurse can stay at the hospital for more than maxP resence hours (e.g. if maxP resence is 7, it is OK that a nurse works at 2am and also at 8am, but it not possible that he/she works at 2am and also at 9am).
+	\item No nurse can rest for more than one consecutive hour (e.g. working at 8am, resting at 9am and 10am, and working again at 11am is not allowed, since there are two consecutive resting hours). 
+\end{itemize}
+The goal of this project is to determine at which hours each nurse should be working in order to minimize the number of nurses required and satisfy all the aforementioned constraints.
+
+\section{Introduction}
+The aim of the project is, as stated before, to minimize the number of nurses working on a hospital. To do so we will implement three different algorithms, one for Integer Liniar programming software, a GRASP algorithm, and a BRKGA algorithm. The reason for implementing it three times is to compare the performance and the quality of the results.
+\newline
+
+This document will be devided into three parts, the first part will explain the implmenetation of the Integer Liniar programming algroithm, next we will explain the implementation of both the GRASP and the BRKGA algorithms, and finally we will make a comparision table between the three implementations.
+\newpage
+\section{Integer Liniar Programming}
+
+The integer Liniar programming part has been implemented using \textbf{OPL}. In order to implement the model we have created the following decision variables.
+\begin{lstlisting}[style=OPL]
+ int numNurses = ...;
+ int hours = ...;
+ range N = 1..numNurses;
+ range H = 1..hours;
+ 
+ int demand [h in H]= ...;
+ int minHours = ...;
+ int maxHours = ...;
+ int maxConsec = ...;
+ 
+ int maxPresence = ...;
+ 
+ 1 - dvar boolean works[n in N][h in H]; 
+ 2 - dvar boolean working[n in N];
+ 
+ 3 - dvar int+ max_h[n in N];
+ 4 - dvar int+ min_h[n in N];
+
+ 5 - dvar boolean worksBefore[n in N][h in 2..hours];
+ 6 - dvar boolean worksAfter[n in N][h in 1..hours-1];
+ 7 - dvar boolean rests[n in N][h in H];
+
+\end{lstlisting}
+In our case, we have used 7 decision variables (\textit{dvar}), now we will explain each variable and its uses.
+\newline
+\begin{enumerate}
+	\item The decision variable stores if a nurse \textit{n}, works on the hour \textit{h}.
+	\item Stores if a nurse \textit{n} works at all.
+	\item Stores the \textbf{maximum} hour that a nurse \textit{n} works.
+	\item Stores the \textbf{minimum} hour that a nurse \textit{n} works.
+	\item Stores if a nurse \textit{n} works \textbf{before} the hour \textit{h}
+	\item Stores if a nurse \textit{n} works \textbf{after} the hour \textit{h}.
+	\item Stores if a nurse \textit{n} is resting at the hour \textit{h}.
+\end{enumerate}
+Below we can see the two methods used to load the value of max hours and min hours
+\begin{lstlisting}[style=OPL]
+	//set max_h
+ 	forall (n in N, h in H)
+ 		max_h[n] >= works[n][h] * h;	
+ 	//set min_h
+ 	forall (n in N, h in H)
+ 		min_h[n] <= h + (1-works[n][h]) *hours;	
+\end{lstlisting}
+
+\begin{lstlisting}[style=OPL]
+ 	forall (n in N, h in 2..hours)
+ 		sum (h_w in 1..h-1) works[n][h_w] <= worksBefore[n][h] * hours ;	
+\end{lstlisting}
+And here the ones that we use to load the variables of \textit{worksAfter} and \textit{worksBefore}.
+\begin{lstlisting}[style=OPL]
+ 	//worksAfter
+ 	forall (n in N, h in 1..hours-1)
+ 		sum (h_w in h+1..hours) works[n][h_w] <= worksAfter[n][h] * hours ;	
+ 	//rests
+ 	forall (n in N, h in H)
+ 		rests[n][h] == 1-works[n][h];	
+\end{lstlisting}
+
+
+Next we will comment on the objective function, the constrains, and their implementation.
+\begin{lstlisting}[style=OPL]
+  minimize sum(n in N) working[n]; // do not change this for A)
+\end{lstlisting}
+This is our objective function, since the objective is to minimize the number of nurses working at the hospital, to do so we try to minimize the sum of the dvar \textit{working}. Since working stores if a nurse works at all, the sum of all the nurses should be minimized.
+\\
+Next we will explain hour constraints.
+\begin{lstlisting}[style=OPL]
+ 	forall(n in N)
+ 	  	sum (h in H) works[n][h] >= minHours * working[n];
+\end{lstlisting}
+Forces each nurse to work at least \textit{minHours} hours or none.
+
+\begin{lstlisting}[style=OPL] 	
+ 	forall(n in N)
+ 	  	sum (h in H) works[n][h] <= maxHours * working[n];
+\end{lstlisting}
+Forces each nurse to work at most \textit{maxHours} hours or to not work at all.
+\begin{lstlisting}[style=OPL]
+ 	forall(h in H)
+ 	  	 sum(n in N) works[n][h] >= demand[h];
+\end{lstlisting}
+Checks that the demand for the hour \textit{h} has been fulfilled.
+
+\begin{lstlisting}[style=OPL]
+ 	forall(n in N, h in (1..(hours-maxConsec)))
+ 		(sum ( consec in (0..(maxConsec))) works[n][h+consec])<=maxConsec; 	
+\end{lstlisting}
+Enforces each nurse to work at most \textit{maxConsec} consecutive hours.
+
+\begin{lstlisting}[style=OPL]
+ 	forall (n in N)
+ 		max_h[n] - min_h[n] +1 <= maxPresence;	
+\end{lstlisting}
+Each nurse should be working (either  at maximum \textit{maxPresence} hours.
+
+\begin{lstlisting}[style=OPL]
+ 	forall (n in N, h in 2..hours-1)
+ 		worksAfter[n][h]+worksBefore[n][h]+rests[n][h]+rests[n][h+1] <= 3;	
+\end{lstlisting}
+Sets that no nurse can rest for more than one consecutve hours.
+
+\section{GRASP and BRKGA}
+
+\subsection{GRASP}
+The GRASP algorithm is a combination of both a \textit{greedy randomized algorithm}, we will begin with the \textit{pseudo-code} of the constructive algorithm.
+
+\begin{algorithmic}
+\Procedure{construct}{g(·), $\alpha$, x}
+	\State $x = 0$\;
+	\State Initialize candidate \textit{C}\;
+	\While{Demand and constrains not fulfilled}
+		\State $cost = g(t | t \in C[nurse][hour])$
+		\State $s_(min)=min{cost}$
+		\State $s_(max)=max{cost}$
+		\If{$s_(min) > INFEASIBLE$}
+			\Return
+		\EndIf
+		\State $RCL={s \in C | g(s) \leq s_(min) + \alpha(s_(min) - s_(max)}$
+		\State $candidate = random.choice(RCL)$
+		\State $x=x\cup{s}$
+		\State Update candidate C 
+	\EndWhile	
+\EndProcedure
+\end{algorithmic}
+
+One of the only differences between our implementation and the base algorithm is that we do not recalculate all the costs for all the candidates, but only the ones that are going to change. This change greatly improves the performance of the GRASP algorithm.
+\newline
+
+\begin{algorithmic}
+\Procedure{local}{f(·), n(·), d(·), x}
+	\For{nurse in Nurses}
+		\State $tmpsol={n(x) | x \ni nurse}$
+		\If{$d(tmpsol)$}
+			\State $x=tmpsol$
+			\State continue
+		\EndIf
+		\State $H = {y \in N(x) | f(y) < f(x)}$
+		\While{$|H| > 0$}
+			\State $Select x \in H$
+			\State $H={y \in n(x) | f(y) < f(x)}$
+		\EndWhile   
+	\EndFor	
+\EndProcedure
+\end{algorithmic}
+
+The main objective with the local search is to first remove the whole nurse and check if the demand (\textit{d()}for the hours is still fulfilled, if it is, then we go the the next nurse and save the solution. In the case the the demand is not fulfilled we iterate through the other nurses and try to put the hours from the original nurse to the remaning working nurses.
+\newline
+\begin{algorithmic}
+\Procedure{greedy}{C, h(·), cons(·), pres(·), d(·), br(·)}
+	\For{candidate in C}
+		\State $cost_hours=h(candidate)$
+		\State $cost_consec=cons(candidate)$
+		\State $cost_pres=pres(candidate)$
+		\State $cost_d=d(candidate)$
+		\State $cost_br=br(candidate)$
+		\If{$INFEASIBLE in (cost_hours, cost_consec, cost_pres, cost_d, cost_br$}
+			\State $cost=INFEASEBLE$
+		\Else
+			\State $cost=cost_hours + cost_consec + cost_pres + cost_d + cost_br$
+		\EndIf
+		\State Update candidate with cost
+	\EndFor	
+\EndProcedure
+\end{algorithmic}
+The only significant modification from the base algorithm is that if any of the costs returns \textit{INFEASEBLE} we automatically set the cost to \textit{INFEASEBLE}
+\end{document}
