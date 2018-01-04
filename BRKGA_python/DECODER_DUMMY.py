@@ -38,16 +38,21 @@ def decoder_order(data, chromosomes):
         iteration += hours
 
     for nurse in nurses_ordered:
-        sol[nurse] = calculate_working(sol, nurse, hours_ordered[nurse],
-                                       h_demand)
+        n = calculate_working(sol, nurse, hours_ordered[nurse], h_demand)
+        if (sum(n) < d.get('minHours') and sum(n) > 0):
+            n = calculate_working(sol, nurse, hours_ordered[nurse], h_demand,
+                                  nurse=n)
+
+        sol[nurse] = n
 
     fitness = sum([nurse.any() for nurse in sol])
     return sol, fitness
 
 
-def calculate_working(sol, n, h, hours_demand):
+def calculate_working(sol, n, h, hours_demand, nurse=None):
     HOURS = d.get('hours')
-    nurse = np.zeros(HOURS)
+    if nurse is None:
+        nurse = np.zeros(HOURS)
 
     hours_working = 0
 
