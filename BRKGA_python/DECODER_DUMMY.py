@@ -16,14 +16,14 @@ def decode(population, data):
 
 
 def decoder_order(data, chromosomes):
-
     nurses = data.get('numNurses')
     hours = data.get('hours')
 
     sol = np.zeros((nurses, hours), dtype=np.int)
+    h_demand = np.zeros(d.get('hours'))
 
     chr_nurses = chromosomes[0:nurses]
-    chr_nurses_hours = chromosomes
+    chr_nurses_hours = chromosomes[nurses:]
 
     # Access order for nurses
     nurses_ordered = sorted(xrange(nurses), key=lambda k: chr_nurses[k])
@@ -38,44 +38,48 @@ def decoder_order(data, chromosomes):
         iteration += hours
 
     for nurse in nurses_ordered:
-        n = calculate_working(sol, nurse, hours_ordered[nurse])
-        if (sum(n) < d.get('minHours') and sum(n) > 0):
-            n = calculate_working(sol, nurse, hours_ordered[nurse], nurse=n)
-        sol[nurse] = n
+        sol[nurse] = calculate_working(sol, nurse, hours_ordered[nurse],
+                                       h_demand)
+
     fitness = sum([nurse.any() for nurse in sol])
     return sol, fitness
 
 
-def calculate_working(sol, n, h, nurse=None):
+def calculate_working(sol, n, h, hours_demand):
+    HOURS = d.get('hours')
+    nurse = np.zeros(HOURS)
 
-    if nurse is None:
-        nurse = [0] * len(sol[n])
-    #print h
-    #print "Starting", h
+    hours_working = 0
+
     for hour in h:
         if nurse[hour]:
             continue
-        hours_working = np.sum(nurse)
         if hours_working == d.get('maxHours'):
             return nurse
         if not calculate_consec(nurse, hour):
             continue
-        if not calculate_presence(nurse, hour):
+
+        elements = (first_element, last_element) = _get_first_and_last(nurse)
+
+        if not calculate_presence(nurse, hour, elements):
             continue
-        rest = calculate_rest(nurse, hour, h)
-        if type(rest) == list:
+
+        rest = calculate_rest(nurse, hour, h, hours_working, elements)
+
+        if not isinstance(rest, bool):
             nurse = rest
             continue
         elif not rest:
             continue
         if hours_working > 0 and hours_working < d.get('minHours'):
             nurse[hour] = 1
-        elif calculate_demand(sol, hour):
+        elif calculate_demand(hour, hours_demand):
             nurse[hour] = 1
-        if DEBUG:
-            print "Hour", hour
-            print "Nurse", nurse
-            pdb.set_trace()
+
+        if nurse[hour]:
+            hours_working += 1
+            hours_demand[hour] += 1
+
     return nurse
 
 
@@ -106,32 +110,34 @@ def calculate_consec(nurse, hour):
     return True
 
 
-def calculate_demand(sol, hour):
+def calculate_demand(hour, hours_demand):
     """ Gives the cost for an specific hour so the demand is fulfilled """
-    hour_demand = np.sum(sol, axis=0)[hour]
 
-    return hour_demand < d.get('demand')[hour]
-
-
-def calculate_presence(nurse, hour):
-    first_element, last_element = _get_first_and_last(nurse)
-    if first_element is None or last_element is None:
-        return True
-
-    m_element = min(hour, first_element)
-    ma_element = max(hour, last_element)
-
-    return not (ma_element - m_element > d.get('maxPresence'))
+    return hours_demand[hour] < d.get('demand')[hour]
 
 
-def calculate_rest(nurse, h, hours):
-    first_element, last_element = _get_first_and_last(nurse)
+def calculate_presence(nurse, hour, elements):
+
+    first_element, last_element = elements
 
     if first_element is None or last_element is None:
         return True
 
+    min_element = min(hour, first_element)
+    max_element = max(hour, last_element)
+
+    return not (max_element - min_element > d.get('maxPresence'))
+
+
+def calculate_rest(nurse, h, hours, working_hours, elements):
+    # Working hours is a memory reference to the variable in the main method
+
+    first_element, last_element = elements
     previous_hour = 0
     next_hour = 0
+
+    if first_element is None or last_element is None:
+        return True
 
     if h > 0:
         previous_hour = nurse[h - 1]
@@ -142,23 +148,29 @@ def calculate_rest(nurse, h, hours):
             first_element < h < last_element):
         return True
 
-    working_hours = np.sum(nurse)
     # Calculates the distance between hour H and the last or first 1
+    remaning_hours = (d.get('maxHours') - working_hours) / 2.0
+
     distance = h - last_element
-    if d.get('maxHours') - working_hours >= distance / 2.0 and h > last_element:
+    if remaning_hours and h > last_element:
+
         if distance == 1:
             return True
+
         elif distance > 1:
             current_position = hours.index(h)
-            remaning_elements = range(last_element, h + 1, 2)[1:]
+            remaning_elements = xrange(last_element + 1, h + 1, 2)
             are_in = [e in remaning_elements for e in hours[current_position:]]
+
             if sum(are_in) == len(remaning_elements):
+
                 for p in remaning_elements:
                     nurse[p] = 1
+
                 return nurse
 
     distance = first_element - h
-    if d.get('maxHours') - working_hours >= distance / 2.0 and h < first_element:
+    if remaning_hours and h < first_element:
         if distance == 1:
             return True
         elif distance > 1:
@@ -171,16 +183,18 @@ def calculate_rest(nurse, h, hours):
                 for p in remaning_elements:
                     nurse[p] = 1
                 return nurse
+
     return False
 
 
 def _get_first_and_last(nurse):
     first_element = None
     last_element = None
-
+    elements = nurse.nonzero()
     try:
-        first_element = nurse.index(1)
-        last_element = len(nurse) - 1 - nurse[::-1].index(1)
-    except ValueError:
+        first_element = elements[0][0]
+        last_element = elements[0][-1]
+    except IndexError:
         pass
+
     return (first_element, last_element)
