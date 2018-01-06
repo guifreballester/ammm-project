@@ -38,10 +38,11 @@ def decoder_order(data, chromosomes):
         iteration += hours
 
     for nurse in nurses_ordered:
-        n = calculate_working(sol, nurse, hours_ordered[nurse], h_demand)
+        n, h_demand = calculate_working(sol, nurse, hours_ordered[nurse],
+                                        h_demand)
         if (sum(n) < d.get('minHours') and sum(n) > 0):
-            n = calculate_working(sol, nurse, hours_ordered[nurse], h_demand,
-                                  nurse=n)
+            n, h_demand = calculate_working(sol, nurse, hours_ordered[nurse],
+                                            h_demand, nurse=n)
 
         sol[nurse] = n
 
@@ -54,13 +55,13 @@ def calculate_working(sol, n, h, hours_demand, nurse=None):
     if nurse is None:
         nurse = np.zeros(HOURS)
 
-    hours_working = 0
-
     for hour in h:
+        hours_working = sum(nurse)
+
         if nurse[hour]:
             continue
         if hours_working == d.get('maxHours'):
-            return nurse
+            return nurse, hours_demand
         if not calculate_consec(nurse, hour):
             continue
 
@@ -69,9 +70,10 @@ def calculate_working(sol, n, h, hours_demand, nurse=None):
         if not calculate_presence(nurse, hour, elements):
             continue
 
-        rest = calculate_rest(nurse, hour, h, hours_working, elements)
+        rest = calculate_rest(nurse.copy(), hour, h, hours_working, elements)
 
         if not isinstance(rest, bool):
+            hours_demand = np.add(np.subtract(hours_demand, nurse), rest)
             nurse = rest
             continue
         elif not rest:
@@ -82,10 +84,8 @@ def calculate_working(sol, n, h, hours_demand, nurse=None):
             nurse[hour] = 1
 
         if nurse[hour]:
-            hours_working += 1
             hours_demand[hour] += 1
-
-    return nurse
+    return nurse, hours_demand
 
 
 def calculate_consec(nurse, hour):

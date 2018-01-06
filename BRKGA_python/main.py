@@ -8,7 +8,12 @@ import DECODER_DUMMY as decoder  # Dgcoder algorithm (problem-dependent)
 from data import data
 # Configuration parameters (problem-dependent and execution-dependent)
 from CONFIGURATION import config
-print config
+import time
+import numpy as np
+import pprint
+
+PLOTS_ENABLED = True
+
 # initializations
 numIndividuals = int(config['numIndividuals'])
 chrLength = int(config['chromosomeLength'])
@@ -19,36 +24,49 @@ maxNumGen = int(config['maxNumGen'])
 ro = float(config['inheritanceProb'])
 evol = []
 
-# Main body
 
-population = brkga.initializePopulation(numIndividuals, chrLength)
+def main():
+    # Main body
+    print "Using data: ", pprint.pprint(data)
+    start = time.time()
+    population = brkga.initializePopulation(numIndividuals, chrLength)
 
-i = 0
-while (i < maxNumGen):
+    i = 0
+    while (i < maxNumGen):
+        print "Iteration :", i
+        population = decoder.decode(population, data)
+        evol.append(brkga.getBestFitness(population)['fitness'])
+        if numElite > 0:
+            elite, nonelite = brkga.classifyIndividuals(population, numElite)
+        else:
+            elite = []
+            nonelite = population
+        if numMutants > 0:
+            mutants = brkga.generateMutantIndividuals(numMutants, chrLength)
+        else:
+            mutants = []
+        if numCrossover > 0:
+            crossover = brkga.doCrossover(elite, nonelite, ro, numCrossover)
+        else:
+            crossover = []
+        population = elite + crossover + mutants
+        i += 1
+
     population = decoder.decode(population, data)
-    evol.append(brkga.getBestFitness(population)['fitness'])
-    if numElite > 0:
-        elite, nonelite = brkga.classifyIndividuals(population, numElite)
-    else:
-        elite = []
-        nonelite = population
-    if numMutants > 0:
-        mutants = brkga.generateMutantIndividuals(numMutants, chrLength)
-    else:
-        mutants = []
-    if numCrossover > 0:
-        crossover = brkga.doCrossover(elite, nonelite, ro, numCrossover)
-    else:
-        crossover = []
-    population = elite + crossover + mutants
-    i += 1
+    bestIndividual = brkga.getBestFitness(population)
+    print "Total execution time: ", time.time() - start
+    print "Number of nurses working: ", bestIndividual['fitness']
+    print "Solution", bestIndividual['solution']
+    np.savetxt('results.out', bestIndividual['solution'], fmt='%d')
+    if PLOTS_ENABLED:
+        plt.plot(evol)
+        plt.xlabel('number of generations')
+        plt.ylabel('Fitness of best individual')
+        #plt.axis([0, len(evol), 0, (2000 + 1) * 2000 / 2])
+        plt.show()
 
-population = decoder.decode(population, data)
-bestIndividual = brkga.getBestFitness(population)
-plt.plot(evol)
-plt.xlabel('number of generations')
-plt.ylabel('Fitness of best individual')
-plt.axis([0, len(evol), 0, (chrLength + 1) * chrLength / 2])
-plt.show()
+# print bestIndividual
 
-print bestIndividual
+
+if __name__ == '__main__':
+    main()
