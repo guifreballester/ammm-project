@@ -1,3 +1,5 @@
+data = None
+
 data_1 = {
     'numNurses': 20,
     'hours': 24,
@@ -35,7 +37,7 @@ data_3 = {
 
 
 """
-data_1 = {
+data_4 = {
     'numNurses': 10,
     'hours': 10,
     'demand': [2, 2, 1, 2, 3, 4, 6, 1, 1, 2],
@@ -44,7 +46,6 @@ data_1 = {
     'maxConsec': 3,
     'maxPresence': 7,
 }
-
 data_3 = {
     'numNurses': 1900,
     'hours': 24,

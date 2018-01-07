@@ -13,7 +13,19 @@ while heuristic not in (1, 2):
     heuristic = int(raw_input("Enter a number (1 or 2): "))
 
 if heuristic == 1:
+    from GRASP import data
+
+    print "Choose an instance to run"
+    print "1 - Easy"
+    print "2 - Medium"
+    print "3 - Hard"
+    instance = int(raw_input("Enter a number (1, 2 or 3): "))
+    while instance not in (1, 2, 3):
+        print "Choose either 1, 2 or 3"
+        instance = int(raw_input("Enter a number (1 or 2): "))
+    data.data = getattr(data, "data_%d" % instance)
     from GRASP import grasp
+
     print "Launching GRASP"
     time_taken = []
     solutions = []
@@ -28,6 +40,17 @@ if heuristic == 1:
         print "\n"
         print "Solutions for each iteration", solutions
 else:
-    from BRKGA_python import main
+    from BRKGA_python import data
+    print "Choose an instance to run"
+    print "1 - Easy"
+    print "2 - Medium"
+    print "3 - Hard"
+    instance = int(raw_input("Enter a number (1, 2 or 3): "))
+    while instance not in (1, 2, 3):
+        print "Choose either 1, 2 or 3"
+        instance = int(raw_input("Enter a number (1 or 2): "))
+    data.data = getattr(data, "data_%d" % instance)
     print "Launching BRKGA"
+    from BRKGA_python import main
+
     main.main()

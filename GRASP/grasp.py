@@ -2,8 +2,8 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 import time
-from data import data_2 as data
 import pprint
+from data import data
 import cProfile
 
 
@@ -12,8 +12,8 @@ import cProfile
 # Setting to True will enable the debugger
 DEBUG = False
 
-ALFA = 0.5
-MAX_TR = 10
+ALFA = 0.1
+MAX_TR = 20
 INFEASIBLE = 5000
 NO_HOUR = INFEASIBLE
 COST_ZERO = 0
@@ -34,6 +34,7 @@ def grasp():
     of nurses has to work in order to minimize the nurses working
     """
     print "Using data: ", pprint.pprint(data)
+    print "Using alpha: ", ALFA
     start = time.time()
     x = np.ones((NURSES, HOURS), dtype=np.int)
     total_solutions = []
@@ -85,9 +86,9 @@ def grasp():
 
 def is_solution_better(previous, new):
     """ Checks if the new solution is better than the previous """
-    total_previous = np.sum(previous, axis=0)
-    total_new = np.sum(new, axis=0)
-    return all(np.less(total_new, total_previous))
+    total_previous = np.sum(previous, axis=1)
+    total_new = np.sum(new, axis=1)
+    return np.count_nonzero(total_new) < np.count_nonzero(total_previous)
 
 
 def construct(ALFA):
@@ -164,10 +165,10 @@ def initialize_c():
 def demand_fulfilled(solution, flag=False):
     """ Checks if the demands have been fulfilled """
     is_fulfilled = calculate_demand(solution)
-    total_h = np.sum(solution, axis=1)
+    total_h_nurses = np.sum(solution, axis=1)
     for n in xrange(NURSES):
         is_fulfilled.append(
-            total_h[n] >= data.get('minHours') or total_h[n] == 0)
+            total_h_nurses[n] >= data.get('minHours') or not total_h_nurses[n])
         break_demand = demand_break(solution[n])
         is_fulfilled.append(break_demand)
     return all(is_fulfilled)
@@ -207,49 +208,57 @@ def local(solution):
     for n in xrange(NURSES):
         if not any(solution[n]):
             continue
+        tmp = tmp_sol.copy()
         tmp_sol = create_new_solution(solution, n)
         demand = calculate_demand(tmp_sol)
         if all(demand):
             solution = tmp_sol
-        # aviable_rows = [nu for nu in xrange(NURSES) if any(tmp_sol[nu])]
-        # random.shuffle(aviable_rows)
-        # total_working = np.sum(solution[n])
+        aviable_rows = [nu for nu in xrange(NURSES) if any(tmp_sol[nu])]
+        random.shuffle(aviable_rows)
 
-        # for row in aviable_rows:
-        #     possible_hours = []
-        #     for h in xrange(HOURS):
-        #         if tmp_sol[row][h]:
-        #             continue
-        #         hours_working = sum([hs for hs in tmp_sol[row]])
-        #         # Check maxHours
-        #         if hours_working == data.get('maxHours'):
-        #             continue
-        #         # Check maxPresence (300 or 0 means hour is aviable)
-        #         if (calculate_pres_cost(tmp_sol[row], h, hours_working)
-        #                 not in (COST_ZERO, OPTIONAL)):
-        #             continue
-        #         # Check consec (-200 means hour is aviable)
-        #         if calculate_consec_cost(tmp_sol[row], h) != COST_ZERO:
-        #             continue
-        #         if calculate_break_cost(tmp_sol[row], h) == INFEASIBLE:
-        #             continue
-        #         if not calculate_demand(tmp_sol)[h]:
-        #             tmp_sol[row][h] = 1
-        #             total_working -= 1
-        #         else:
-        #             possible_hours.append(h)
-        #     if all(calculate_demand(tmp_sol)):
-        #         if len(possible_hours):
-        #             for element in possible_hours:
-        #                 if sum(tmp_sol[row]) == data.get('maxHours'):
-        #                     break
-        #                 tmp_sol[row][element] = 1
-        #         solution = tmp_sol
-        #         break
-        #     else:
-        #         tmp_sol = tmp
-        # else:
-        #     continue
+        hours_to_move = sum(tmp[n])
+
+        possible_hours = []
+
+        for row in aviable_rows:
+            for h in xrange(HOURS):
+                if tmp_sol[row][h] or hours_to_move == 0:
+                    continue
+                hours_working = sum([hs for hs in tmp_sol[row]])
+                # Check maxHours
+                if hours_working == data.get('maxHours'):
+                    break
+                # Check maxPresence (300 or 0 means hour is aviable)
+                if (calculate_pres_cost(tmp_sol[row], h, hours_working)
+                        not in (COST_ZERO, OPTIONAL)):
+                    continue
+                # Check consec (-200 means hour is aviable)
+                if calculate_consec_cost(tmp_sol[row], h) != COST_ZERO:
+                    continue
+                if calculate_break_cost(tmp_sol[row], h) == INFEASIBLE:
+                    continue
+                if not calculate_demand(tmp_sol)[h]:
+                    tmp_sol[row][h] = 1
+                    hours_to_move -= 1
+
+                possible_hours.append((row, h))
+            if hours_to_move == 0:
+                break
+        if all(calculate_demand(tmp_sol)) and hours_to_move == 0:
+            solution = tmp_sol
+
+        elif len(possible_hours):
+            for element in possible_hours:
+                if sum(tmp_sol[row]) == data.get('maxHours'):
+                    continue
+                row, hour = element
+                tmp_sol[row][hour] = 1
+                hours_to_move -= 1
+            if hours_to_move == 0:
+                solution = tmp_sol
+
+        else:
+            tmp_sol = tmp
     return solution
 
 
@@ -305,18 +314,14 @@ def calculate_consec_cost(nurse, hour):
     and after hours
     """
     consec_hours = 0
-    checking_hour = 0
-    if hour - MAX_CONSEC >= 0:
-        checking_hour = hour - MAX_CONSEC
-    while checking_hour <= hour + MAX_CONSEC:
-        if checking_hour == HOURS:
-            break
-
+    checking_hour = max(0, hour - MAX_CONSEC)
+    hour_end = min(hour + MAX_CONSEC, HOURS)
+    while checking_hour < hour_end:
         if nurse[checking_hour] == 1 or checking_hour == hour:
             consec_hours += 1
         elif nurse[checking_hour] == 0:
             consec_hours = 0
-        if consec_hours > MAX_CONSEC:
+        if consec_hours == MAX_CONSEC:
             return NO_HOUR
         checking_hour += 1
     return COST_ZERO
@@ -411,6 +416,6 @@ def calculate_demand_cost(sol, hour):
 
 if __name__ == '__main__':
     print "Starting"
-    cProfile.run('grasp()')
-    #grasp()
+    #cProfile.run('grasp()')
+    grasp()
     print "End"
