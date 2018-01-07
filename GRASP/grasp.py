@@ -13,7 +13,7 @@ import cProfile
 DEBUG = False
 
 ALFA = 0.1
-MAX_TR = 20
+MAX_TR = 10
 INFEASIBLE = 5000
 NO_HOUR = INFEASIBLE
 COST_ZERO = 0
@@ -213,11 +213,12 @@ def local(solution):
         demand = calculate_demand(tmp_sol)
         if all(demand):
             solution = tmp_sol
+            continue
         aviable_rows = [nu for nu in xrange(NURSES) if any(tmp_sol[nu])]
         random.shuffle(aviable_rows)
 
-        hours_to_move = sum(tmp[n])
-
+        hours_to_move = len(
+            [hour for hour in xrange(HOURS) if not demand[hour]])
         possible_hours = []
 
         for row in aviable_rows:
